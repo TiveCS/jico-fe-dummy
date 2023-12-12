@@ -1,6 +1,15 @@
 "use client";
 
 import {
+  LoginResponse,
+  loginSchema,
+  loginType,
+} from "@/app/api/auth/signin/types";
+import { AxiosClient } from "@/common/api";
+import Navbar from "@/components/Navbar";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
   Form,
   FormControl,
   FormField,
@@ -8,29 +17,48 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { toast } from "@/components/ui/use-toast";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { AxiosError } from "axios";
+import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
 
 export default function LoginPage() {
-  const loginSchema = z.object({
-    email: z.string().email(),
-    password: z.string(),
-  });
-
-  type loginType = z.infer<typeof loginSchema>;
-
+  const router = useRouter();
   const form = useForm<loginType>({
     resolver: zodResolver(loginSchema),
   });
 
-  const onSubmit = (data: loginType) => {};
+  const onSubmit = async (data: loginType) => {
+    try {
+      const res = await AxiosClient.post<LoginResponse>("/auth/signin", data);
+
+      const { accessToken } = res.data.data;
+
+      localStorage.setItem("accessToken", accessToken);
+
+      toast({
+        title: "Success",
+        description: "Login success",
+      });
+
+      router.push("/dashboard");
+    } catch (error) {
+      if (error instanceof AxiosError) {
+        toast({
+          title: "Error",
+          description: error.message,
+        });
+      }
+      throw error;
+    }
+  };
 
   return (
     <>
+      <Navbar />
+
       <div className="py-32">
         <Form {...form}>
           <Card className="py-8 max-w-md mx-auto shadow">
@@ -43,10 +71,10 @@ export default function LoginPage() {
               >
                 <FormField
                   control={form.control}
-                  name="email"
+                  name="username"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel htmlFor={field.name}>Email</FormLabel>
+                      <FormLabel htmlFor={field.name}>Username</FormLabel>
                       <FormControl>
                         <Input
                           {...field}
@@ -65,7 +93,11 @@ export default function LoginPage() {
                     <FormItem>
                       <FormLabel htmlFor={field.name}>Password</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="Your password..." />
+                        <Input
+                          type="password"
+                          {...field}
+                          placeholder="Your password..."
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
